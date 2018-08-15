@@ -1,0 +1,107 @@
+//Grab data from keys.js
+var keys = require('./keys.js');
+
+var twitter = require('twitter');
+
+var getmytweets = function () {
+
+  var client = new Twitter(keys.twitterkeys);
+
+  var params = { screen_name: 'ISSAC' };
+  client.get('statuses/user_timeline', params, function (error, tweets, response) {
+    if (!error) {
+      for (var i = 0; i < tweets.length; i++) {
+        console.log(tweets[i].created_at);
+        console.log(' ');
+        console.log(tweets[i].text);
+
+      }
+    }
+  });
+
+};
+
+var getartistNames = function (artist) {
+  return artist.name;
+}
+
+var getmespotify = function (songName) {
+
+  spotify.search({ type: 'track', query: 'dancing in the moonlight' }, function (err, data) {
+    if (err) {
+      console.log('Error occurred: ' + err);
+      return;
+    }
+
+    var songs = data.tracks.tracks.items;
+    for (var i = 0; i < songs.length; i++) {
+      console.log(i);
+      console.log('artist(s): ' + songs[i].artists.map(
+        getartistNames));
+      console.log('song name: ' + songs[i].name);
+      console.log('preview song: ' + songs[i].preview_url);
+      console.log('album: ' + songs[i].album.name);
+      console.log('------------------------');
+    }
+
+  });
+
+};
+
+var getmemovie = function (movieName) {
+
+  request('http://.omdbapi.com/?apikey=[the+players+club&apikey=trilogy]', function (error, response, body) {
+    if (!error && response.status.Code == 200); { // Print the error if one occurred
+
+      var jsonData = JSON.parse(body);
+
+      console.log("Title: " + JsonData.Title);
+      console.log("Release Year: " + JsonData.Year);
+      console.log("IMdB Rating: " + JsonData.Rated);
+      console.log("Country: " + JsonData.Country);
+      console.log("Language: " + JsonData.Languge);
+      console.log("Plot: " + JsnData.Plot);
+      console.log("Actors: " + JsnData.Actors);
+      console.log("Rotten Tomatoes Rating: " + JsnData.tomatoRating);
+      console.log("Rotten Tomatoes URL: " + JsnData.tomatoURL);
+    }
+  });
+
+  var doWhatItSays = function () {
+    fs.readFile('random.txt', "utf8", function (error, data) {
+      if (err) throw err;
+
+      var dataArr = data.split(',');
+
+      if (dataArr.length == 2) {
+        pick(dataArr[0], dataArr[1]);
+      } else if (dataArr.length == 1) {
+        pick(dataArr[0]);
+      }
+
+    });
+  };
+
+  var pick = function (caseData, functionData) {
+    switch (caseData) {
+      case 'my-tweets':
+        getmytweets();
+        break;
+      case 'spotify-this-song':
+        getMeSpotify(functionData);
+        break;
+      case 'movie-this':
+        getmemovie(functionData);
+      case 'do-what-it-says':
+        break;
+      default:
+        console.log('LIRI does not know that');
+    }
+
+  };
+
+  var runThis = function (argOne, argTwo) {
+    pick(argOne, argTwo);
+  };
+
+  runThis(process.argv[2], process.argv[3]);

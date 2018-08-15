@@ -1,157 +1,315 @@
-// require - provides a way to load a module (such as keys.js). ./key.js needs "./" to access file since keys.js is in the same directory as liri.js 
-// ./key.js accesses all of the exports in the key.js file. This can be confirmed when "node liri.js" is run in the command line since the console.log from the keys.js file will output 'this is loaded.'
-var keys = require('./keys.js');
-// NPM (package manager for node.js) package modules:
-// Loads Twitter module
-var twitter = require('twitter');
-// Loads Spotify module
-var spotify = require('spotify');
-// Loads Request module, Here we incorporate the "request" npm package
-var request = require('request');
-// Loads fs module for read and write
-var fs = require('fs');
+require("dotenv").config();
 
+// Import the Twitter NPM package.
+var Twitter = require("twitter");
 
-// process.argv will print out any command line arguments
-var nodeArgs = process.argv;
-// outputs the command line arguments
-// console.log(nodeArgs);
+// Import the node-spotify-api NPM package.
+var Spotify = require("node-spotify-api");
 
+// Import the API keys
+var keys = require("./keys");
 
-// Global Scope Variables
-var songName = process.argv[3];
-var movieName = process.argv[3];
-var textFile = process.argv[2];
+// Import the request npm package.
+var request = require("request");
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// FUNCTIONS: Calling Twitter, Spotify, OMBD, fs packages
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// TWITTER
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Gets twitter feed/anonymous function
-var twitterRequest = function() {
-  // New client, pulls from keys(exports).twitter keys object
-  // Shorten to keys.twitterKeys since "keys" pulls from keys.js, and "twitterKeys" are in the keys.js file, thus, keys.twitterKeys to access Twitter API. 
-  var client = new twitter(keys.twitterKeys); 
-  // Grabs from my twitter profile "atrierweil".
-  var params = {screen_name: 'atrierweil'};
-  // Gets a new tweet(client) from twitter package while matching with my unique twitter keys and username. Gets a function that outputs error, tweets, and response.
-  client.get('statuses/user_timeline', params, function(error, tweets, response)
-  {
-    // If no error, 
-    if (!error) {  
-    
-      // Repeat for up to 20 tweets/how many tweets there are...
-      for (i = 0; i < tweets.length; i++) {
-        // Divider line
-        console.log('-----------------------------------------------------------');
-        // logs the date/time the tweets were created.
-        console.log(tweets[i].created_at);
-        // log tweets text.
-        console.log(tweets[i].text);
-        // outputs entire tweet array w/objects
-        // console.log(tweets);
+// Import the FS package for read/write.
+var fs = require("fs");
+
+// Initialize the spotify API client using our client id and secret
+var spotify = new Spotify(keys.spotify);
+
+// FUNCTIONS
+// =====================================
+
+// Writes to the log.txt file
+var getArtistNames = function(artist) {
+  return artist.name;
+};
+
+// Function for running a Spotify search
+var getMeSpotify = function(songName) {
+  if (songName === undefined) {
+    songName = "What's my age again";
+  }
+
+  spotify.search(
+    {
+      type: "track",
+      query: songName
+    },
+    function(err, data) {
+      if (err) {
+        console.log("Error occurred: " + err);
+        return;
+      }
+
+      var songs = data.tracks.items;
+
+      for (var i = 0; i < songs.length; i++) {
+        console.log(i);
+        console.log("artist(s): " + songs[i].artists.map(getArtistNames));
+        console.log("song name: " + songs[i].name);
+        console.log("preview song: " + songs[i].preview_url);
+        console.log("album: " + songs[i].album.name);
+        console.log("-----------------------------------");
       }
     }
-  })
+  );
 };
-// invoke function (test)
-twitterRequest();
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// SPOTIFY
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// var spotifyRequest = function () {
 
-//   // 
-//   spotify.search({
-//     type: "track",
-//     query: songName
-//   }, function(err, data) {
-//     if (err) {
-//       console.log("Error occurred: " + err);
-//       return;
-//     }
+// Function for running a Twitter Search
+var getMyTweets = function() {
+  var client = new Twitter(keys.twitter);
 
+  var params = {
+    screen_name: "cnn"
+  };
+  client.get("statuses/user_timeline", params, function(error, tweets, response) {
+    if (!error) {
+      for (var i = 0; i < tweets.length; i++) {
+        console.log(tweets[i].created_at);
+        console.log("");
+        console.log(tweets[i].text);
+      }
+    }
+  });
+};
 
+// Function for running a Movie Search
+var getMeMovie = function(movieName) {
+  if (movieName === undefined) {
+    movieName = "Mr Nobody";
+  }
 
+  var urlHit = "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=full&tomatoes=true&apikey=trilogy";
 
-    // // spotify URL + string from array + the api key
-    // var queryURL = 'https://api.spotify.com' + songName + '/v1/albums/{id}/tracks';
-    // // This line is just to help us debug against the actual URL.
-    // // console.log(queryUrl);
-    // request(queryUrl, function(error, response, body) {
-    //   // If the request is successful
-    //   if (!error && response.statusCode === 200) {
-    //     // Parse the body of the site and recover just the imdbRating
-    //     // (Note: The syntax below for parsing isn't obvious. Just spend a few moments dissecting it).
-    //     console.log('Release Year: ' + JSON.parse(body).Year);
-    //   }
-    // })  
-// };
-// // invoke spotify function (test)
-// spotifyRequest();
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// OMDB REQUEST
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // if the 2nd argument is 'my-tweets'...
-// if (process.argv[2] === 'movie-this' && process.argv[3] === movieName) {
-//   // Loop through all the words in the node argument
-//   // And do a little for-loop magic to handle the inclusion of "+"s
-//   for (var i = 2; i < nodeArgs.length; i++) {
+  request(urlHit, function(error, response, body) {
+    if (!error && response.statusCode === 200) {
+      var jsonData = JSON.parse(body);
 
-//     if (i > 2 && i < nodeArgs.length) {
+      console.log("Title: " + jsonData.Title);
+      console.log("Year: " + jsonData.Year);
+      console.log("Rated: " + jsonData.Rated);
+      console.log("IMDB Rating: " + jsonData.imdbRating);
+      console.log("Country: " + jsonData.Country);
+      console.log("Language: " + jsonData.Language);
+      console.log("Plot: " + jsonData.Plot);
+      console.log("Actors: " + jsonData.Actors);
+      console.log("Rotten Tomatoes Rating: " + jsonData.Ratings[1].Value);
+    }
+  });
+};
 
-//       movieName = movieName + '+' + nodeArgs[i];
+// Function for running a command based on text file
+var doWhatItSays = function() {
+  fs.readFile("random.txt", "utf8", function(error, data) {
+    console.log(data);
 
-//     } else {
+    var dataArr = data.split(",");
 
-//       movieName += nodeArgs[i];
-//     }
-//   }
+    if (dataArr.length === 2) {
+      pick(dataArr[0], dataArr[1]);
+    }
+    else if (dataArr.length === 1) {
+      pick(dataArr[0]);
+    }
+  });
+};
 
-//   // Then run a request to the OMDB API with the movie specified
-//   var queryUrl = 'http://www.omdbapi.com/?t=' + movieName + '&y=&plot=short&r=json';
+// Function for determining which command is executed
+var pick = function(caseData, functionData) {
+  switch (caseData) {
+  case "my-tweets":
+    getMyTweets();
+    break;
+  case "spotify-this-song":
+    getMeSpotify(functionData);
+    break;
+  case "movie-this":
+    getMeMovie(functionData);
+    break;
+  case "do-what-it-says":
+    doWhatItSays();
+    break;
+  default:
+    console.log("LIRI doesn't know that");
+  }
+};
 
-//   // This line is just to help us debug against the actual URL.
-//   // console.log(queryUrl);
+// Function which takes in command line arguments and executes correct function accordingly
+var runThis = function(argOne, argTwo) {
+  pick(argOne, argTwo);
+};
 
-//   request(queryUrl, function(error, response, body) {
+// MAIN PROCESS
+// =====================================
+runThis(process.argv[2], process.argv[3]);
+// DEPENDENCIES
+// =====================================
 
-//     // If the request is successful
-//     if (!error && response.statusCode === 200) {
+// Read and set environment variables
+require("dotenv").config();
 
-//       // Parse the body of the site and recover just the imdbRating
-//       // (Note: The syntax below for parsing isn't obvious. Just spend a few moments dissecting it).
-//       console.log('Release Year: ' + JSON.parse(body).Year);
-//     }
-//   })
-// }
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// READING TEXTFILE
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // This block of code will read from the "movies.txt" file.
+// Import the API keys
+var keys = require("./keys");
 
-// // if the 2nd argument is 'my-tweets'...
-// if (process.argv[2] === 'do-what-it-says') {
-//   // It's important to include the "utf8" parameter or the code will provide stream data (garbage)
-//   // The code will store the contents of the reading inside the variable "data"
-//   fs.readFile('random.txt', 'utf8', function(error, data){
+// Import the Twitter NPM package.
+var Twitter = require("twitter");
 
-//     // We will then print the contents of data
-//     // console.log(data);
+// Import the node-spotify-api NPM package.
+var Spotify = require("node-spotify-api");
 
-//     // Then split it by commas (to make it more readable)
-//     var dataArr = data.split(',');
+// Import the request npm package.
+var request = require("request");
 
-//     // We will then re-display the content as an array for later use.
-//     console.log(dataArr);
+// Import the FS package for read/write.
+var fs = require("fs");
 
-//   })
-// };
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Initialize the spotify API client using our client id and secret
+var spotify = new Spotify(keys.spotify);
+
+// FUNCTIONS
+// =====================================
+
+// Writes to the log.txt file
+var writeToLog = function(data) {
+  // Append the JSON data and add a newline character to the end of the log.txt file
+  fs.appendFile("log.txt", JSON.stringify(data) + "\n", function(err) {
+    if (err) {
+      return console.log(err);
+    }
+
+    console.log("log.txt was updated!");
+  });
+};
+
+// Helper function that gets the artist name
+var getArtistNames = function(artist) {
+  return artist.name;
+};
+
+// Function for running a Spotify search
+var getMeSpotify = function(songName) {
+  if (songName === undefined) {
+    songName = "What's my age again";
+  }
+
+  spotify.search({ type: "track", query: songName }, function(err, data) {
+    if (err) {
+      console.log("Error occurred: " + err);
+      return;
+    }
+
+    var songs = data.tracks.items;
+    var data = [];
+
+    for (var i = 0; i < songs.length; i++) {
+      data.push({
+        "artist(s)": songs[i].artists.map(getArtistNames),
+        "song name: ": songs[i].name,
+        "preview song: ": songs[i].preview_url,
+        "album: ": songs[i].album.name
+      });
+    }
+
+    console.log(data);
+    writeToLog(data);
+  });
+};
+
+// Function for running a Twitter Search
+var getMyTweets = function() {
+  var client = new Twitter(keys.twitter);
+
+  var params = { screen_name: "cnn" };
+  client.get("statuses/user_timeline", params, function(error, tweets, response) {
+    if (!error) {
+      var data = [];
+
+      for (var i = 0; i < tweets.length; i++) {
+        data.push({
+          created_at: tweets[i].created_at,
+          text: tweets[i].text
+        });
+      }
+
+      console.log(data);
+      writeToLog(data);
+    }
+  });
+};
+
+// Function for running a Movie Search
+var getMeMovie = function(movieName) {
+  if (movieName === undefined) {
+    movieName = "Mr Nobody";
+  }
+
+  var urlHit = "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=full&tomatoes=true&apikey=trilogy";
+
+  request(urlHit, function(error, response, body) {
+    if (!error && response.statusCode === 200) {
+      var jsonData = JSON.parse(body);
+
+      var data = {
+        "Title:": jsonData.Title,
+        "Year:": jsonData.Year,
+        "Rated:": jsonData.Rated,
+        "IMDB Rating:": jsonData.imdbRating,
+        "Country:": jsonData.Country,
+        "Language:": jsonData.Language,
+        "Plot:": jsonData.Plot,
+        "Actors:": jsonData.Actors,
+        "Rotten Tomatoes Rating:": jsonData.Ratings[1].Value
+      };
+
+      console.log(data);
+      writeToLog(data);
+    }
+  });
+};
+
+// Function for running a command based on text file
+var doWhatItSays = function() {
+  fs.readFile("random.txt", "utf8", function(error, data) {
+    console.log(data);
+
+    var dataArr = data.split(",");
+
+    if (dataArr.length === 2) {
+      pick(dataArr[0], dataArr[1]);
+    }
+    else if (dataArr.length === 1) {
+      pick(dataArr[0]);
+    }
+  });
+};
+
+// Function for determining which command is executed
+var pick = function(caseData, functionData) {
+  switch (caseData) {
+  case "my-tweets":
+    getMyTweets();
+    break;
+  case "spotify-this-song":
+    getMeSpotify(functionData);
+    break;
+  case "movie-this":
+    getMeMovie(functionData);
+    break;
+  case "do-what-it-says":
+    doWhatItSays();
+    break;
+  default:
+    console.log("LIRI doesn't know that");
+  }
+};
+
+// Function which takes in command line arguments and executes correct function accordingly
+var runThis = function(argOne, argTwo) {
+  pick(argOne, argTwo);
+};
+
+// MAIN PROCESS
+// =====================================
+runThis(process.argv[2], process.argv[3]);
